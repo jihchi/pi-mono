@@ -1,5 +1,16 @@
+import type * as PiAi from "@mariozechner/pi-ai";
 import type { AssistantMessage, ImageContent } from "@mariozechner/pi-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const { closeOpenAICodexWebSocketSessionsMock } = vi.hoisted(() => ({
+	closeOpenAICodexWebSocketSessionsMock: vi.fn(),
+}));
+
+vi.mock("@mariozechner/pi-ai", async (importOriginal) => ({
+	...(await importOriginal<typeof PiAi>()),
+	closeOpenAICodexWebSocketSessions: closeOpenAICodexWebSocketSessionsMock,
+}));
+
 import type { SessionShutdownEvent } from "../src/index.js";
 import { runPrintMode } from "../src/modes/print-mode.js";
 
@@ -88,6 +99,7 @@ function createRuntimeHost(assistantMessage: AssistantMessage): FakeRuntimeHost 
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	closeOpenAICodexWebSocketSessionsMock.mockClear();
 });
 
 describe("runPrintMode", () => {
@@ -138,5 +150,17 @@ describe("runPrintMode", () => {
 		expect(errorSpy).toHaveBeenCalledWith("provider failure");
 		expect(session.extensionRunner.emit).toHaveBeenCalledTimes(1);
 		expect(session.extensionRunner.emit).toHaveBeenCalledWith({ type: "session_shutdown", reason: "quit" });
+	});
+
+	it("closes cached Codex WebSocket sessions on shutdown", async () => {
+		const runtimeHost = createRuntimeHost(createAssistantMessage({ text: "done" }));
+
+		const exitCode = await runPrintMode(runtimeHost as unknown as Parameters<typeof runPrintMode>[0], {
+			mode: "text",
+			initialMessage: "Say done",
+		});
+
+		expect(exitCode).toBe(0);
+		expect(closeOpenAICodexWebSocketSessionsMock).toHaveBeenCalledTimes(1);
 	});
 });

@@ -6,7 +6,7 @@
  * - `pi --mode json "prompt"` - JSON event stream
  */
 
-import type { AssistantMessage, ImageContent } from "@mariozechner/pi-ai";
+import { type AssistantMessage, closeOpenAICodexWebSocketSessions, type ImageContent } from "@mariozechner/pi-ai";
 import type { AgentSessionRuntime } from "../core/agent-session-runtime.js";
 import { flushRawStdout, writeRawStdout } from "../core/output-guard.js";
 import { killTrackedDetachedChildren } from "../utils/shell.js";
@@ -152,6 +152,7 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 		for (const cleanup of signalCleanupHandlers) {
 			cleanup();
 		}
+		closeOpenAICodexWebSocketSessions();
 		await disposeRuntime();
 		await flushRawStdout();
 	}
